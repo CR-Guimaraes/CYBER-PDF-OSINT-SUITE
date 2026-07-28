@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Cyber PDF & OSINT Suite</title>
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%92%80</text></svg>">
+
+    <!-- Fonte estilo terminal/dev -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Estilos -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Biblioteca PDF -->
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+
+    <!-- Renderização de páginas de PDF (para PDF -> Imagem / PowerPoint) -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.3.122/legacy/build/pdf.min.js"></script>
+
+    <!-- Geração de PowerPoint, Word, Excel e Zip protegido por senha -->
+    <script src="https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/@zip.js/zip.js/dist/zip.min.js"></script>
+
+    <!-- Leitura de metadados EXIF de imagens (ferramenta OSINT) -->
+    <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.js"></script>
+
+</head>
+
+<body>
+
+<canvas id="matrix"></canvas>
+
+<!-- Cursor customizado -->
+<div id="cursorRing"></div>
+<div id="cursorDot"></div>
+
+<!-- ======= TELA DE LOGIN REAL (Firebase) ======= -->
+<div id="loginScreen">
+    <div class="loginBox">
+        <h2>&gt; ACESSO AO SISTEMA_</h2>
+        <p>Crie uma conta ou entre com email e senha.</p>
+
+        <input type="email" id="authEmail" placeholder="seu@email.com" autocomplete="username">
+        <input type="password" id="authPass" placeholder="senha (mín. 8 caracteres, letras e números)" autocomplete="current-password">
+
+        <button id="signInBtn">ENTRAR</button>
+        <button id="signUpBtn" class="secondaryBtn loginSecondary">CRIAR CONTA</button>
+
+        <div class="loginDivider"><span>ou</span></div>
+
+        <button id="googleBtn" class="googleBtn">🔵 ENTRAR COM GOOGLE</button>
+
+        <p class="forgotLink" id="forgotBtn">Esqueci minha senha</p>
+
+        <div class="loginStatus" id="loginStatus"></div>
+
+        <p class="devAccessLink" id="devAccessLink">modo dev (uso local, temporário)</p>
+    </div>
+</div>
+<div id="accessFlash"></div>
+
+<!-- ======= HUB: escolha de seção após o login ======= -->
+<div id="hubScreen">
+    <div class="hubGlitchTitle">ESCOLHA SEU CAMINHO_</div>
+    <p class="hubSubtitle">Três módulos. Um sistema. Selecione o que vai acessar.</p>
+
+    <div class="hubOptions">
+        <button class="hubCard" id="hubPdfBtn">
+            <span class="hubIcon">📄</span>
+            <span class="hubCardTitle">PDF TOOLS</span>
+            <span class="hubCardDesc">Unificar, extrair, converter, proteger e mais</span>
+        </button>
+
+        <button class="hubCard hubCardRed" id="hubCyberBtn">
+            <span class="hubIcon">🕵</span>
+            <span class="hubCardTitle">CYBER TOOLS</span>
+            <span class="hubCardDesc">OSINT, senhas vazadas, chave segura</span>
+        </button>
+
+        <button class="hubCard hubCardBlue" id="hubGameBtn">
+            <span class="hubIcon">🎮</span>
+            <span class="hubCardTitle">GAME ZONE</span>
+            <span class="hubCardDesc">O jogo secreto Firewall Runner</span>
+        </button>
+    </div>
+</div>
+
+<!-- Áudio de fundo (troque "musica.mp3" pelo seu arquivo) -->
+<audio id="bgMusic" src="musica.mp3" loop preload="auto"></audio>
+
+<div class="toast" id="toast">
+PDF criado com sucesso!
+</div>
+
+<div class="windowFrame" id="windowFrame">
+
+    <div class="windowBar">
+        <div class="dots">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+        </div>
+        <div class="windowTitle" id="windowTitle">root@kali:~# ./cyberpdf-osint-suite.sh</div>
+        <div class="windowBtns">
+            <button id="hubReturnBtn" title="Trocar de seção">🏠</button>
+            <button id="themeBtn">☀️</button>
+            <button id="muteBtn">🔊</button>
+        </div>
+    </div>
+
+    <div class="container">
+
+    <h1 id="mainTitle">CYBER PDF &amp; OSINT SUITE</h1>
+
+    <div class="statusBar">
+    <span>🔴 root@ca1m</span>
+    <span>🛡 SECURE MODE</span>
+    <span id="visitCounter">👁 Visitas: —</span>
+    <span id="userBadge" class="userBadge"></span>
+    <button id="logoutBtn" class="logoutBtn">SAIR</button>
+    <button id="devModeBadge" class="devModeBadge" style="display:none;" title="Clique para sair do modo dev">🛠 MODO DEV — clique pra saír</button>
+    </div>
+
+    <p class="subtitle">
+    🔒 CYBER PDF OSINT SUITE .v2 • MADE BY <span class="author">ca1m</span>
+    </p>
+
+    <div class="globalNav">
+        <button class="globalNavBtn" id="globalHistoryBtn">📜 HISTÓRICO</button>
+        <button class="globalNavBtn adminTabBtn" id="adminTabBtn" style="display:none;">👑 ADMIN</button>
+    </div>
+
+    <!-- =========================================================
+         SEÇÃO: PDF TOOLS
+    ========================================================== -->
+    <div id="pdfSection" class="appSection">
+
+    <p class="groupLabel">📄 FERRAMENTAS PDF</p>
+    <div class="tabs">
+        <button class="tabBtn active" data-tab="tabMerge">🗂 UNIFICAR</button>
+        <button class="tabBtn" data-tab="tabExtract">✂ EXTRAIR</button>
+        <button class="tabBtn" data-tab="tabWatermark">💧 MARCA D'ÁGUA</button>
+        <button class="tabBtn" data-tab="tabCompress">📦 COMPRIMIR</button>
+        <button class="tabBtn" data-tab="tabPageNum">🔢 NUMERAR</button>
+        <button class="tabBtn" data-tab="tabRotate">🔄 ROTACIONAR</button>
+        <button class="tabBtn" data-tab="tabSplit">🪓 DIVIDIR PDF</button>
+        <button class="tabBtn" data-tab="tabRemovePages">🗑 REMOVER PÁGINAS</button>
+        <button class="tabBtn" data-tab="tabImg2pdf">🖼 IMAGEM → PDF</button>
+        <button class="tabBtn" data-tab="tabPdf2img">📷 PDF → IMAGEM</button>
+        <button class="tabBtn" data-tab="tabPdf2word">📝 PDF → WORD</button>
+        <button class="tabBtn" data-tab="tabPdf2excel">📊 PDF → EXCEL</button>
+        <button class="tabBtn" data-tab="tabPdf2ppt">📽 PDF → POWERPOINT</button>
+        <button class="tabBtn" data-tab="tabProtect">🔒 PROTEGER (SENHA)</button>
+    </div>
+
+    <div class="tabPanel active" id="tabMerge">
+        <label class="drop">
+        📂
+        <h2>ARRASTE SEUS PDFs AQUI</h2>
+        <p>ou clique para selecionar (vários arquivos)</p>
+        <input type="file" id="pdfFiles" multiple accept="application/pdf">
+        </label>
+        <button onclick="mergePDFs()">UNIFICAR PDFs</button>
+        <div id="list"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdfFiles','list')">🗑 Remover seleção</button>
+    </div>
+
+    <div class="tabPanel" id="tabExtract">
+        <label class="drop">
+        ✂
+        <h2>SELECIONE UM PDF</h2>
+        <p>para extrair páginas específicas</p>
+        <input type="file" id="pdfExtractFile" accept="application/pdf">
+        </label>
+        <div id="extractFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdfExtractFile','extractFileName')">🗑 Remover seleção</button>
+        <p class="fieldLabel">Páginas (ex: 1-3,5,7-8):</p>
+        <input type="text" id="pageRange" class="textField" placeholder="1-3,5">
+        <button onclick="extractPages()">EXTRAIR PÁGINAS</button>
+    </div>
+
+    <div class="tabPanel" id="tabWatermark">
+        <label class="drop">
+        💧
+        <h2>SELECIONE UM PDF</h2>
+        <p>para aplicar marca d'água em todas as páginas</p>
+        <input type="file" id="pdfWatermarkFile" accept="application/pdf">
+        </label>
+        <div id="watermarkFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdfWatermarkFile','watermarkFileName')">🗑 Remover seleção</button>
+        <p class="fieldLabel">Texto da marca d'água:</p>
+        <input type="text" id="watermarkText" class="textField" placeholder="CONFIDENCIAL">
+        <button onclick="addWatermark()">APLICAR MARCA D'ÁGUA</button>
+    </div>
+
+    <div class="tabPanel" id="tabCompress">
+        <label class="drop">
+        📦
+        <h2>SELECIONE UM PDF</h2>
+        <p>para reduzir o tamanho do arquivo</p>
+        <input type="file" id="pdfCompressFile" accept="application/pdf">
+        </label>
+        <div id="compressFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdfCompressFile','compressFileName')">🗑 Remover seleção</button>
+        <p class="fieldLabel small">
+        Compressão básica: remove metadados e otimiza a estrutura interna do PDF.
+        Para arquivos com imagens muito grandes, a redução pode ser modesta.
+        </p>
+        <button onclick="compressPDF()">COMPRIMIR PDF</button>
+        <div id="compressResult" class="fieldLabel"></div>
+    </div>
+
+    <div class="tabPanel" id="tabPageNum">
+        <label class="drop">
+        🔢
+        <h2>SELECIONE UM PDF</h2>
+        <p>para adicionar numeração de páginas</p>
+        <input type="file" id="pdfPageNumFile" accept="application/pdf">
+        </label>
+        <div id="pageNumFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdfPageNumFile','pageNumFileName')">🗑 Remover seleção</button>
+        <button onclick="addPageNumbers()">NUMERAR PÁGINAS</button>
+    </div>
+
+    <div class="tabPanel" id="tabRotate">
+        <label class="drop">
+        🔄
+        <h2>SELECIONE UM PDF</h2>
+        <p>para rotacionar todas as páginas</p>
+        <input type="file" id="pdfRotateFile" accept="application/pdf">
+        </label>
+        <div id="rotateFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdfRotateFile','rotateFileName')">🗑 Remover seleção</button>
+        <p class="fieldLabel">Ângulo de rotação:</p>
+        <div class="btnRow">
+            <button class="secondaryBtn angleBtn" data-angle="90">90°</button>
+            <button class="secondaryBtn angleBtn" data-angle="180">180°</button>
+            <button class="secondaryBtn angleBtn" data-angle="270">270°</button>
+        </div>
+        <button onclick="rotatePages()">ROTACIONAR PDF</button>
+    </div>
+
+    <div class="tabPanel" id="tabSplit">
+        <label class="drop">
+        🪓
+        <h2>SELECIONE UM PDF</h2>
+        <p>ou arraste o arquivo aqui</p>
+        <input type="file" id="pdfSplitFile" accept="application/pdf">
+        </label>
+        <div id="splitFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdfSplitFile','splitFileName')">🗑 Remover seleção</button>
+        <p class="fieldLabel">Dividir a cada quantas páginas?</p>
+        <input type="number" id="splitEveryInput" class="textField" placeholder="Ex: 2" min="1" value="1">
+        <p class="fieldLabel small">Ex: um PDF de 10 páginas dividido "a cada 2" gera 5 arquivos, cada um com 2 páginas. Todos vêm num único .zip.</p>
+        <button onclick="splitPdf()">DIVIDIR PDF</button>
+    </div>
+
+    <div class="tabPanel" id="tabRemovePages">
+        <label class="drop">
+        🗑
+        <h2>SELECIONE UM PDF</h2>
+        <p>ou arraste o arquivo aqui</p>
+        <input type="file" id="pdfRemovePagesFile" accept="application/pdf">
+        </label>
+        <div id="removePagesFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdfRemovePagesFile','removePagesFileName')">🗑 Remover seleção</button>
+        <p class="fieldLabel">Páginas para REMOVER (ex: 2,4-6):</p>
+        <input type="text" id="removePagesInput" class="textField" placeholder="2,4-6">
+        <button onclick="removePages()">REMOVER PÁGINAS</button>
+    </div>
+
+    <div class="tabPanel" id="tabImg2pdf">
+        <label class="drop">
+        🖼
+        <h2>SELECIONE IMAGENS</h2>
+        <p>JPG ou PNG — várias de uma vez, viram um único PDF</p>
+        <input type="file" id="imgFiles" multiple accept="image/jpeg,image/png">
+        </label>
+        <div id="imgList"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('imgFiles','imgList')">🗑 Remover seleção</button>
+        <button onclick="imagesToPdf()">CONVERTER PARA PDF</button>
+    </div>
+
+    <div class="tabPanel" id="tabPdf2img">
+        <label class="drop">
+        📷
+        <h2>SELECIONE UM PDF</h2>
+        <p>cada página vira uma imagem PNG (baixadas separadamente)</p>
+        <input type="file" id="pdf2imgFile" accept="application/pdf">
+        </label>
+        <div id="pdf2imgFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdf2imgFile','pdf2imgFileName')">🗑 Remover seleção</button>
+        <button onclick="pdfToImages()">CONVERTER EM IMAGENS</button>
+    </div>
+
+    <div class="tabPanel" id="tabPdf2word">
+        <label class="drop">
+        📝
+        <h2>SELECIONE UM PDF</h2>
+        <p>extrai o texto e gera um .docx</p>
+        <input type="file" id="pdf2wordFile" accept="application/pdf">
+        </label>
+        <div id="pdf2wordFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdf2wordFile','pdf2wordFileName')">🗑 Remover seleção</button>
+        <p class="fieldLabel small">Versão básica: extrai só o texto (sem imagens/formatação original).</p>
+        <button onclick="pdfToWord()">CONVERTER PARA WORD</button>
+    </div>
+
+    <div class="tabPanel" id="tabPdf2excel">
+        <label class="drop">
+        📊
+        <h2>SELECIONE UM PDF</h2>
+        <p>extrai o texto, uma linha por célula, e gera um .xlsx</p>
+        <input type="file" id="pdf2excelFile" accept="application/pdf">
+        </label>
+        <div id="pdf2excelFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdf2excelFile','pdf2excelFileName')">🗑 Remover seleção</button>
+        <p class="fieldLabel small">Versão básica: não detecta tabelas reais, só organiza linhas de texto.</p>
+        <button onclick="pdfToExcel()">CONVERTER PARA EXCEL</button>
+    </div>
+
+    <div class="tabPanel" id="tabPdf2ppt">
+        <label class="drop">
+        📽
+        <h2>SELECIONE UM PDF</h2>
+        <p>cada página vira um slide (como imagem) num .pptx</p>
+        <input type="file" id="pdf2pptFile" accept="application/pdf">
+        </label>
+        <div id="pdf2pptFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('pdf2pptFile','pdf2pptFileName')">🗑 Remover seleção</button>
+        <button onclick="pdfToPowerpoint()">CONVERTER PARA POWERPOINT</button>
+    </div>
+
+    <div class="tabPanel" id="tabProtect">
+        <label class="drop">
+        🔒
+        <h2>SELECIONE UM PDF</h2>
+        <p>gera um .zip protegido por senha contendo o PDF</p>
+        <input type="file" id="protectFile" accept="application/pdf">
+        </label>
+        <div id="protectFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('protectFile','protectFileName')">🗑 Remover seleção</button>
+        <p class="fieldLabel small">O pdf-lib não suporta criptografar o PDF em si — por isso protegemos com uma senha real de ZIP (AES), que é aberta em qualquer programa de arquivos compactados.</p>
+        <input type="password" id="protectPassInput" class="textField" placeholder="Senha do arquivo protegido">
+        <button onclick="protectPdf()">GERAR ZIP PROTEGIDO</button>
+    </div>
+
+    </div>
+
+    <!-- =========================================================
+         SEÇÃO: CYBER TOOLS
+    ========================================================== -->
+    <div id="cyberSection" class="appSection">
+
+    <p class="groupLabel">🕵 OSINT &amp; SEGURANÇA</p>
+    <div class="tabs">
+        <button class="tabBtn active" data-tab="tabLeak">🔑 SENHA VAZADA?</button>
+        <button class="tabBtn" data-tab="tabEmailLeak">📧 EMAIL VAZADO?</button>
+        <button class="tabBtn" data-tab="tabIpLookup">🌐 IP LOOKUP</button>
+        <button class="tabBtn" data-tab="tabDorks">🔍 GOOGLE DORKS</button>
+        <button class="tabBtn" data-tab="tabSubdomains">🌐 SUBDOMÍNIOS</button>
+        <button class="tabBtn" data-tab="tabDns">🔎 DNS LOOKUP</button>
+        <button class="tabBtn" data-tab="tabWhois">📋 WHOIS</button>
+        <button class="tabBtn" data-tab="tabHash">#️⃣ GERADOR DE HASH</button>
+        <button class="tabBtn" data-tab="tabCve">🐛 BUSCA DE CVEs</button>
+        <button class="tabBtn" data-tab="tabExif">🖼 METADADOS EXIF</button>
+        <button class="tabBtn" data-tab="tabKey">🔐 CHAVE SEGURA</button>
+    </div>
+
+    <div class="tabPanel active" id="tabLeak">
+        <p class="fieldLabel">Verifique se sua senha já apareceu em vazamentos conhecidos.</p>
+        <p class="fieldLabel small">Sua senha NUNCA é enviada inteira — só um pedaço do hash (mesmo método do Have I Been Pwned).</p>
+        <input type="password" id="leakPassInput" class="textField" placeholder="Digite uma senha para testar">
+        <button onclick="checkPasswordLeak()">VERIFICAR VAZAMENTO</button>
+        <div id="leakResult" class="fieldLabel"></div>
+    </div>
+
+    <div class="tabPanel" id="tabEmailLeak">
+        <p class="fieldLabel">Verifique se um email já apareceu em vazamentos conhecidos (via XposedOrNot).</p>
+        <input type="email" id="emailLeakInput" class="textField" placeholder="seu@email.com">
+        <button onclick="checkEmailLeak()">VERIFICAR EMAIL</button>
+        <div id="emailLeakResult" class="fieldLabel"></div>
+    </div>
+
+    <div class="tabPanel" id="tabIpLookup">
+        <p class="fieldLabel">Consulta OSINT clássica: geolocalização e provedor por IP ou domínio.</p>
+        <p class="fieldLabel small">Aceita um IP, um domínio (ex: google.com) ou uma URL completa (ex: https://www.google.com). Deixe em branco para consultar o seu próprio IP público.</p>
+        <input type="text" id="ipLookupInput" class="textField" placeholder="Ex: 8.8.8.8, google.com ou https://exemplo.com">
+        <button onclick="ipLookup()">CONSULTAR IP</button>
+        <div id="ipLookupResult" class="fieldLabel"></div>
+    </div>
+
+    <div class="tabPanel" id="tabDorks">
+        <p class="fieldLabel">Gerador de Google Dorks — buscas avançadas usadas em OSINT/pentest pra achar arquivos expostos, painéis de login, diretórios abertos, etc.</p>
+
+        <p class="fieldLabel">Domínio ou palavra-chave alvo:</p>
+        <input type="text" id="dorkTarget" class="textField" placeholder="exemplo.com">
+
+        <p class="fieldLabel">Tipos de busca:</p>
+        <div class="dorkChecks">
+            <label><input type="checkbox" value="files" checked> 📄 Arquivos expostos (pdf, xls, sql, env, log, bak)</label>
+            <label><input type="checkbox" value="login" checked> 🔐 Painéis de login expostos</label>
+            <label><input type="checkbox" value="index" checked> 📂 Diretórios abertos ("index of")</label>
+            <label><input type="checkbox" value="admin"> 🛠 Páginas de admin</label>
+            <label><input type="checkbox" value="config"> ⚙ Arquivos de configuração</label>
+            <label><input type="checkbox" value="cams"> 📷 Câmeras/streams expostos</label>
+            <label><input type="checkbox" value="pastebin"> 📋 Menções em Pastebin</label>
+        </div>
+
+        <button onclick="generateDorks()">GERAR DORKS</button>
+        <div id="dorksResult"></div>
+    </div>
+
+    <div class="tabPanel" id="tabSubdomains">
+        <p class="fieldLabel">Buscador de subdomínios — técnica clássica de OSINT usando Certificate Transparency (crt.sh), sem precisar de chave de API.</p>
+        <input type="text" id="subdomainInput" class="textField" placeholder="exemplo.com">
+        <button onclick="findSubdomains()">BUSCAR SUBDOMÍNIOS</button>
+        <div id="subdomainResult"></div>
+    </div>
+
+    <div class="tabPanel" id="tabDns">
+        <p class="fieldLabel">Consulta de registros DNS — equivalente ao comando <code>dig</code> do Kali Linux.</p>
+        <input type="text" id="dnsInput" class="textField" placeholder="exemplo.com">
+        <button onclick="dnsLookup()">CONSULTAR DNS</button>
+        <div id="dnsResult"></div>
+    </div>
+
+    <div class="tabPanel" id="tabWhois">
+        <p class="fieldLabel">Dados de registro do domínio (registrador, datas, nameservers) via RDAP — sucessor moderno do WHOIS.</p>
+        <input type="text" id="whoisInput" class="textField" placeholder="exemplo.com">
+        <button onclick="whoisLookup()">CONSULTAR WHOIS</button>
+        <div id="whoisResult"></div>
+    </div>
+
+    <div class="tabPanel" id="tabHash">
+        <p class="fieldLabel">Gera hashes de qualquer texto — útil pra verificar integridade de arquivos/senhas ou pra CTF.</p>
+        <input type="text" id="hashInput" class="textField" placeholder="Digite um texto">
+        <button onclick="generateHashes()">GERAR HASHES</button>
+        <div id="hashResult"></div>
+    </div>
+
+    <div class="tabPanel" id="tabCve">
+        <p class="fieldLabel">Busca de vulnerabilidades conhecidas (CVEs) por palavra-chave — base oficial NVD/NIST, equivalente ao <code>searchsploit</code>.</p>
+        <input type="text" id="cveInput" class="textField" placeholder="Ex: apache, wordpress, openssl">
+        <button onclick="searchCve()">BUSCAR CVEs</button>
+        <div id="cveResult"></div>
+    </div>
+
+    <div class="tabPanel" id="tabExif">
+        <p class="fieldLabel">Extraia metadados EXIF de uma foto — técnica de OSINT clássica (pode revelar coordenadas GPS, modelo do celular/câmera, data, etc).</p>
+        <label class="drop">
+        🖼
+        <h2>SELECIONE UMA FOTO</h2>
+        <p>JPG com metadados EXIF (fotos de celular geralmente têm)</p>
+        <input type="file" id="exifFile" accept="image/jpeg">
+        </label>
+        <div id="exifFileName" class="fileName"></div>
+        <button type="button" class="clearFileBtn" onclick="clearFileInput('exifFile','exifFileName')">🗑 Remover seleção</button>
+        <button onclick="extractExif()">EXTRAIR METADADOS</button>
+        <div id="exifResult" class="fieldLabel"></div>
+    </div>
+
+    <div class="tabPanel" id="tabKey">
+        <p class="fieldLabel">Gere uma chave/senha forte aleatória:</p>
+        <button onclick="generateKey()" class="secondaryBtn">🔑 GERAR CHAVE SEGURA</button>
+    </div>
+
+    </div>
+
+    <!-- =========================================================
+         SEÇÃO: GAME ZONE
+    ========================================================== -->
+    <div id="gameSection" class="appSection">
+
+    <p class="groupLabel">🎮 GAME ZONE</p>
+
+    <div class="gameSubTabs">
+        <button class="gameSubTabBtn active" data-gametab="gamePlay">🎮 JOGAR</button>
+        <button class="gameSubTabBtn" data-gametab="gameShop">🛍 LOJA</button>
+    </div>
+
+    <div class="gamePanel active" id="gamePlay">
+        <p class="fieldLabel">O jogo secreto: Firewall Runner.</p>
+        <p class="fieldLabel small">Pressione ESPAÇO (ou toque/clique na tela) para pular os firewalls. A cada 5 pontos você ganha 1 moeda.</p>
+
+        <div class="gameTopBar">
+            <span id="highscoreDisplay">🏆 Recorde: 0</span>
+            <span class="coinsDisplay" id="coinsDisplay">🪙 0 moedas</span>
+        </div>
+
+        <div class="mapSelector" id="mapSelector"></div>
+
+        <canvas id="gameCanvas" width="680" height="180"></canvas>
+        <div id="gameOverMsg" class="gameOverMsg"></div>
+    </div>
+
+    <div class="gamePanel" id="gameShop">
+        <p class="fieldLabel">🛍 Compre acessórios pro seu personagem e mapas novos com as moedas que você ganha jogando.</p>
+        <p class="coinsDisplay" id="coinsDisplayShop">🪙 0 moedas</p>
+
+        <p class="fieldLabel">👤 Cor do personagem</p>
+        <div class="shopGrid" id="shopHats"></div>
+
+        <p class="fieldLabel">🗺 Mapas</p>
+        <div class="shopGrid" id="shopMaps"></div>
+    </div>
+
+    </div>
+
+    <!-- =========================================================
+         GLOBAL: HISTÓRICO E ADMIN (visíveis em todos os módulos)
+    ========================================================== -->
+    <div id="globalHistorySection" class="globalSection">
+        <button class="backBtn" onclick="closeGlobalSection()">◀ VOLTAR</button>
+        <p class="fieldLabel">Últimas ações salvas na sua conta:</p>
+        <button onclick="loadHistory()" class="secondaryBtn">🔄 ATUALIZAR HISTÓRICO</button>
+        <div id="historyList"></div>
+    </div>
+
+    <div id="globalAdminSection" class="globalSection">
+        <button class="backBtn" onclick="closeGlobalSection()">◀ VOLTAR</button>
+        <p class="fieldLabel">👑 Painel visível só para admins.</p>
+        <button onclick="loadAdminDashboard()" class="secondaryBtn">🔄 ATUALIZAR PAINEL</button>
+
+        <div class="adminStatCards">
+            <div class="adminStatCard"><span id="adminTotalUsers">—</span><small>usuários</small></div>
+        </div>
+
+        <p class="fieldLabel">Ações mais usadas (últimas 150 no sistema):</p>
+        <div id="adminActionStats"></div>
+
+        <p class="fieldLabel">Sessões recentes (todos os usuários):</p>
+        <div id="adminSessions"></div>
+    </div>
+
+    <div class="progress">
+    <div class="bar" id="bar"></div>
+    </div>
+
+    <div class="terminal" id="terminal"></div>
+
+    <div class="footer">
+    🛡 Cyber PDF &amp; OSINT Suite v2.0
+    <span> | Made by ca1m</span>
+    <br>
+    <a href="https://www.linkedin.com/in/caioriotto/" target="_blank" rel="noopener">🔗 LinkedIn — Caio Riotto</a>
+    </div>
+
+    </div>
+
+</div>
+
+<!-- ======= AVISO DE COOKIES ESSENCIAIS ======= -->
+<div id="cookieBanner">
+    <p>🍪 Este site usa cookies essenciais para manter sua preferência de tema e o funcionamento do login. Nenhum cookie de rastreamento/publicidade é usado.</p>
+    <button id="cookieAcceptBtn">ENTENDI</button>
+</div>
+
+<!-- Módulos de autenticação (edite apenas firebase-config.js) -->
+<script type="module" src="firebase-config.js"></script>
+<script type="module" src="auth-firebase.js"></script>
+
+<!-- URL do backend (edite apenas backend-config.js depois de publicar no Render) -->
+<script src="backend-config.js"></script>
+
+<script src="script.js"></script>
+
+</body>
+
+</html>
